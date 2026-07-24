@@ -29,7 +29,7 @@
       <div id="passcodeError" class="alert alert-error hidden"></div>
       <div class="field">
         <label class="field-label" for="passcodeInput">審核密碼</label>
-        <input type="text" id="passcodeInput" autocomplete="off">
+        <input type="password" id="passcodeInput" inputmode="numeric" autocomplete="off">
       </div>
       <button class="btn btn-primary" id="passcodeBtn">確認</button>
     </div>
@@ -139,6 +139,11 @@
         btn.disabled = false;
         btn.textContent = old;
       }
+    });
+
+    // 密碼欄按 Enter＝按「確認」
+    document.getElementById('passcodeInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); document.getElementById('passcodeBtn').click(); }
     });
 
     function renderDetail() {
