@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>待審核案件清單 — 好日子 EAP</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="topbar">好日子 EAP · 待審核清單</div>
+  <div class="container">
+
+    <div class="card" id="loadingCard">
+      <h2><span class="spinner" style="border-color:rgba(46,125,91,.3);border-top-color:#2e7d5b;"></span>載入中…</h2>
+    </div>
+
+    <div class="card hidden" id="errorCard">
+      <h1>無法載入清單</h1>
+      <div class="alert alert-error" id="errorMsg"></div>
+      <p class="hint">請由審核通知信中的連結進入。</p>
+    </div>
+
+    <div class="card hidden" id="listCard">
+      <h1>待審核案件</h1>
+      <p class="lead" id="hrName"></p>
+      <div id="emptyMsg" class="alert alert-info hidden">目前沒有待審核的案件。</div>
+      <div id="queueList"></div>
+    </div>
+
+  </div>
+
+  <script src="assets/config.js"></script>
+  <script src="assets/api.js"></script>
+  <script>
+    var IDENTITY_LABELS = {
+      disability: '身心障礙證明', major_illness: '重大傷病', medical_record: '就醫紀錄',
+      foreign_caregiver_eligible: '家庭看護資格', ltc_level_2_8: '長照 2-8 級'
+    };
+    var token = new URLSearchParams(location.search).get('token') || '';
+
+    function show(id){document.getElementById(id).classList.remove('hidden');}
+    function hide(id){document.getElementById(id).classList.add('hidden');}
+    function fmt(iso){ if(!iso) return ''; try{var d=new Date(iso);return (d.getMonth()+1)+'/'+d.getDate();}catch(e){return iso;} }
+
+    async function init() {
+      if (!token) return fail('缺少連結參數。');
+      try {
+        var data = await window.API.post({ action: 'listPendingByHr', token: token });
+        hide('loadingCard'); show('listCard');
+        document.getElementById('hrName').textContent = data.hrName ? (data.hrName + ' 您好，以下為您廠區待審核案件：') : '';
+        if (!data.items.length) { show('emptyMsg'); return; }
+        var html = data.items.map(function (it) {
+          return '<div class="queue-item">' +
+            '<div><b>' + it.employeeName + '</b>（' + it.factory + '）' +
+            '<div class="meta">' + it.applicationId + '｜' + (IDENTITY_LABELS[it.identityType]||it.identityType) +
+            '｜' + it.requestedDays + ' 天｜' + fmt(it.submittedAt) + '</div></div>' +
+            '<a class="btn btn-primary" style="width:auto;padding:10px 18px;" href="review.html?token=' +
+            encodeURIComponent(it.token) + '">審核</a></div>';
+        }).join('');
+        document.getElementById('queueList').innerHTML = html;
+      } catch (err) {
+        fail(err.message || '載入失敗。');
+      }
+    }
+    function fail(msg){ hide('loadingCard'); document.getElementById('errorMsg').textContent=msg; show('errorCard'); }
+    init();
+  </script>
+</body>
+</html>

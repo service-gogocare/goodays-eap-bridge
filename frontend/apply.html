@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>申請照顧時數 — 好日子 EAP</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="topbar">好日子 EAP · 照顧時數申請</div>
+  <div class="container">
+
+    <!-- 申請表單 -->
+    <div class="card" id="formCard">
+      <h1>申請照顧時數</h1>
+      <p class="lead">請填寫以下資料並上傳佐證文件，送出後系統會通知您所屬廠區的人資審核。</p>
+
+      <div id="formError" class="alert alert-error hidden"></div>
+
+      <form id="applyForm" novalidate>
+        <div class="field">
+          <label class="field-label" for="employeeId">員工工號 <span class="req">*</span></label>
+          <input type="text" id="employeeId" name="employeeId" autocomplete="off" placeholder="例如：A12345">
+          <div class="hint">請輸入您的公司員工工號。</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="identityType">申請身分別 <span class="req">*</span></label>
+          <select id="identityType" name="identityType">
+            <option value="">請選擇…</option>
+            <option value="disability">具有效期間內身心障礙證明</option>
+            <option value="major_illness">具有效期間內全民健康保險重大傷病資格</option>
+            <option value="medical_record">具三個月內就醫或手術紀錄</option>
+            <option value="foreign_caregiver_eligible">符合聘僱外國人從事家庭看護工作之被看護者資格</option>
+            <option value="ltc_level_2_8">經長照管理中心評估屬長照需要等級第 2 至 8 級</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="careTargetRelation">被照顧者與您的關係 <span class="req">*</span></label>
+          <input type="text" id="careTargetRelation" name="careTargetRelation" placeholder="例如：配偶／父母／子女">
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="requestedDays">申請照顧天數 <span class="req">*</span></label>
+          <input type="number" id="requestedDays" name="requestedDays" min="1" step="1" value="1">
+          <div class="hint">試辦期每位員工年度上限以人資核定為準。</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">佐證附件 <span class="req">*</span></label>
+          <div class="dropzone" id="dropzone">
+            <div>點此選擇檔案，或將檔案拖曳到這裡</div>
+            <div class="hint">可接受 PDF／JPG／PNG，單檔不超過 5MB</div>
+            <div class="filename hidden" id="fileName"></div>
+          </div>
+          <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" class="hidden">
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="btn btn-primary" id="submitBtn">送出申請</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 送出成功 -->
+    <div class="card hidden" id="successCard">
+      <h1>申請已送出 ✅</h1>
+      <div class="alert alert-success">
+        我們已將審核通知寄給您所屬廠區的人資。審核完成後將以電子郵件通知您結果。
+      </div>
+      <div id="warnBox" class="alert alert-warn hidden"></div>
+      <div class="detail-row"><div class="k">案件編號</div><div class="v" id="resultAid"></div></div>
+      <p class="hint" style="margin-top:20px;">請記下您的案件編號，可用於查詢審核進度。</p>
+      <div class="btn-row">
+        <a class="btn btn-primary" id="toStatusLink" href="status.html">查詢申請進度</a>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="assets/config.js"></script>
+  <script src="assets/api.js"></script>
+  <script>
+    var ALLOWED_EXT = ['pdf', 'jpg', 'jpeg', 'png'];
+    var MAX_BYTES = 5 * 1024 * 1024;
+    var selectedFile = null;
+
+    var dropzone = document.getElementById('dropzone');
+    var fileInput = document.getElementById('fileInput');
+    var fileNameEl = document.getElementById('fileName');
+    var formError = document.getElementById('formError');
+
+    dropzone.addEventListener('click', function () { fileInput.click(); });
+    dropzone.addEventListener('dragover', function (e) { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', function () { dropzone.classList.remove('dragover'); });
+    dropzone.addEventListener('drop', function (e) {
+      e.preventDefault(); dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', function () {
+      if (fileInput.files.length) handleFile(fileInput.files[0]);
+    });
+
+    function handleFile(file) {
+      var ext = (file.name.split('.').pop() || '').toLowerCase();
+      if (ALLOWED_EXT.indexOf(ext) < 0) {
+        showError('附件格式僅接受 PDF、JPG 或 PNG。');
+        return;
+      }
+      if (file.size > MAX_BYTES) {
+        showError('附件大小不可超過 5MB。');
+        return;
+      }
+      clearError();
+      selectedFile = file;
+      fileNameEl.textContent = '已選擇：' + file.name;
+      fileNameEl.classList.remove('hidden');
+    }
+
+    function showError(msg) {
+      formError.textContent = msg;
+      formError.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function clearError() { formError.classList.add('hidden'); }
+
+    function fileToBase64(file) {
+      return new Promise(function (resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function () {
+          // 去掉 data:...;base64, 前綴
+          var result = String(reader.result);
+          resolve(result.substring(result.indexOf(',') + 1));
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    document.getElementById('applyForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      clearError();
+
+      var employeeId = document.getElementById('employeeId').value.trim();
+      var identityType = document.getElementById('identityType').value;
+      var relation = document.getElementById('careTargetRelation').value.trim();
+      var days = parseInt(document.getElementById('requestedDays').value, 10);
+
+      if (!employeeId) return showError('請填寫員工工號。');
+      if (!identityType) return showError('請選擇申請身分別。');
+      if (!relation) return showError('請填寫被照顧者與您的關係。');
+      if (!days || days < 1) return showError('請填寫有效的申請天數。');
+      if (!selectedFile) return showError('請上傳佐證附件。');
+
+      var btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>送出中，請稍候…';
+
+      try {
+        var base64 = await fileToBase64(selectedFile);
+        var data = await window.API.post({
+          action: 'submitApplication',
+          employeeId: employeeId,
+          identityType: identityType,
+          careTargetRelation: relation,
+          requestedDays: days,
+          attachment: { name: selectedFile.name, mimeType: selectedFile.type || 'application/octet-stream', base64: base64 }
+        });
+
+        document.getElementById('resultAid').textContent = data.applicationId;
+        document.getElementById('toStatusLink').href = 'status.html?aid=' + encodeURIComponent(data.applicationId);
+        if (data.overLimitWarning) {
+          var wb = document.getElementById('warnBox');
+          wb.textContent = '提醒：本次申請可能已超過年度使用上限，人資審核時將一併評估。';
+          wb.classList.remove('hidden');
+        }
+        document.getElementById('formCard').classList.add('hidden');
+        document.getElementById('successCard').classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (err) {
+        showError(err.message || '送出失敗，請稍後再試。');
+        btn.disabled = false;
+        btn.textContent = '送出申請';
+      }
+    });
+  </script>
+</body>
+</html>

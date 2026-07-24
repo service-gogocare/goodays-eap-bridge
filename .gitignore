@@ -1,0 +1,16 @@
+# clasp 專案設定（含 scriptId，個人環境專屬，不進版控）
+backend/.clasp.json
+.clasprc.json
+
+# 機密：一律放 GAS Script Properties，永不進版控（防呆）
+**/secrets*.json
+**/*.secret
+
+# OS / 編輯器
+.DS_Store
+Thumbs.db
+.vscode/
+
+readme.md
+backend
+doc

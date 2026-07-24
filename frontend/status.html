@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>查詢申請進度 — 好日子 EAP</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="topbar">好日子 EAP · 查詢進度</div>
+  <div class="container">
+
+    <div class="card">
+      <h1>查詢申請進度</h1>
+      <p class="lead">請輸入您的案件編號查詢審核狀態。</p>
+      <div id="queryError" class="alert alert-error hidden"></div>
+      <div class="field">
+        <label class="field-label" for="aidInput">案件編號</label>
+        <input type="text" id="aidInput" placeholder="例如：EAP-20260724-001" autocomplete="off">
+      </div>
+      <button class="btn btn-primary" id="queryBtn">查詢</button>
+    </div>
+
+    <div class="card hidden" id="resultCard">
+      <h2>查詢結果</h2>
+      <div class="detail-row"><div class="k">案件編號</div><div class="v" id="rAid"></div></div>
+      <div class="detail-row"><div class="k">審核狀態</div><div class="v" id="rStatus"></div></div>
+      <div class="detail-row"><div class="k">申請天數</div><div class="v" id="rDays"></div></div>
+      <div class="detail-row"><div class="k">提交時間</div><div class="v" id="rSubmitted"></div></div>
+
+      <!-- approved 區塊 -->
+      <div id="approvedBox" class="hidden" style="margin-top:20px;">
+        <div class="alert alert-success">您的申請已通過！以下為您的優惠代碼（也已寄至您的信箱）：</div>
+        <div class="voucher-code" id="rVoucher"></div>
+        <div class="detail-row"><div class="k">可用天數</div><div class="v" id="rvDays"></div></div>
+        <div class="detail-row"><div class="k">有效期限</div><div class="v" id="rExpires"></div></div>
+        <div class="qr"><img id="rQr" width="240" height="240" alt="兌換 QR Code"></div>
+        <div class="btn-row">
+          <a class="btn btn-primary" id="rRedeem" target="_blank" rel="noopener">前往兌換</a>
+        </div>
+      </div>
+
+      <!-- rejected 區塊 -->
+      <div id="rejectedBox" class="hidden" style="margin-top:20px;">
+        <div class="alert alert-error">很抱歉，您的申請未通過。</div>
+        <div class="detail-row"><div class="k">退件原因</div><div class="v" id="rReason"></div></div>
+        <p class="hint">請依原因補齊資料後重新申請。</p>
+      </div>
+
+      <!-- pending 區塊 -->
+      <div id="pendingBox" class="hidden" style="margin-top:20px;">
+        <div class="alert alert-info">您的申請正在審核中，審核完成後將以電子郵件通知您。</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="assets/config.js"></script>
+  <script src="assets/api.js"></script>
+  <script>
+    var STATUS_LABEL = {
+      pending: '<span class="badge badge-pending">審核中</span>',
+      approved: '<span class="badge badge-approved">已通過</span>',
+      rejected: '<span class="badge badge-rejected">未通過</span>'
+    };
+    function show(id){document.getElementById(id).classList.remove('hidden');}
+    function hide(id){document.getElementById(id).classList.add('hidden');}
+    function fmt(iso){ if(!iso) return '—'; try{var d=new Date(iso);return d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}catch(e){return iso;} }
+
+    async function query() {
+      var err = document.getElementById('queryError');
+      err.classList.add('hidden');
+      var aid = document.getElementById('aidInput').value.trim();
+      if (!aid) { err.textContent='請輸入案件編號。'; err.classList.remove('hidden'); return; }
+
+      var btn = document.getElementById('queryBtn');
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>查詢中…';
+      try {
+        var d = await window.API.get({ action: 'getApplication', applicationId: aid });
+        document.getElementById('rAid').textContent = d.applicationId;
+        document.getElementById('rStatus').innerHTML = STATUS_LABEL[d.status] || d.status;
+        document.getElementById('rDays').textContent = d.requestedDays + ' 天';
+        document.getElementById('rSubmitted').textContent = fmt(d.submittedAt);
+
+        hide('approvedBox'); hide('rejectedBox'); hide('pendingBox');
+        if (d.status === 'approved' && d.voucher) {
+          document.getElementById('rVoucher').textContent = d.voucher.voucherCode;
+          document.getElementById('rvDays').textContent = d.voucher.days + ' 天';
+          document.getElementById('rExpires').textContent = fmt(d.voucher.expiresAt) + ' 前';
+          document.getElementById('rQr').src = d.voucher.qrImgUrl;
+          document.getElementById('rRedeem').href = d.voucher.redeemUrl;
+          show('approvedBox');
+        } else if (d.status === 'rejected') {
+          document.getElementById('rReason').textContent = d.rejectReason || '（未提供）';
+          show('rejectedBox');
+        } else {
+          show('pendingBox');
+        }
+        show('resultCard');
+      } catch (e) {
+        err.textContent = e.message || '查詢失敗，請稍後再試。';
+        err.classList.remove('hidden');
+        hide('resultCard');
+      } finally {
+        btn.disabled = false; btn.textContent = '查詢';
+      }
+    }
+
+    document.getElementById('queryBtn').addEventListener('click', query);
+    document.getElementById('aidInput').addEventListener('keydown', function(e){ if(e.key==='Enter') query(); });
+
+    // 支援從申請頁帶入 ?aid=
+    var pre = new URLSearchParams(location.search).get('aid');
+    if (pre) { document.getElementById('aidInput').value = pre; query(); }
+  </script>
+</body>
+</html>
