@@ -4,5 +4,5 @@
  */
 window.APP_CONFIG = {
   // 例：https://script.google.com/macros/s/AKfyc.../exec
-  WEBAPP_URL: 'https://script.google.com/macros/s/請填入你的部署ID/exec'
+  WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbxBFnYCBDnXS40IlJRzKQiCYksd6bZvdtL3LJqUBlqUoXIBAvS5yaXdXv4497VavAh5/exec'
 };
