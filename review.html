@@ -118,10 +118,27 @@
       show('errorCard');
     }
 
-    document.getElementById('passcodeBtn').addEventListener('click', function () {
-      // passcode 於送出審核時一併驗證；此處先收起輸入畫面顯示明細
-      hide('passcodeCard');
-      renderDetail();
+    document.getElementById('passcodeBtn').addEventListener('click', async function () {
+      var pcErr = document.getElementById('passcodeError');
+      pcErr.classList.add('hidden');
+      var code = document.getElementById('passcodeInput').value.trim();
+      if (!code) { pcErr.textContent = '請輸入審核密碼。'; pcErr.classList.remove('hidden'); return; }
+
+      var btn = this;
+      btn.disabled = true;
+      var old = btn.textContent;
+      btn.innerHTML = '<span class="spinner"></span>驗證中…';
+      try {
+        // 帶密碼重新驗證：正確才會回傳完整明細（否則後端擋下，不外洩個資）
+        appData = await window.API.get({ action: 'verifyToken', token: token, passcode: code });
+        hide('passcodeCard');
+        renderDetail();
+      } catch (err) {
+        pcErr.textContent = err.message || '密碼錯誤，請重新輸入。';
+        pcErr.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = old;
+      }
     });
 
     function renderDetail() {
