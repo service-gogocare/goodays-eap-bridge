@@ -64,6 +64,7 @@ label.field-label .req { color: var(--danger); }
 
 input[type="text"],
 input[type="number"],
+input[type="password"],
 select,
 textarea {
   width: 100%;
@@ -77,6 +78,10 @@ textarea {
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--green);
+}
+/* 密碼欄：字距拉開更好辨識 */
+input[type="password"] {
+  letter-spacing: 4px;
 }
 textarea { min-height: 100px; resize: vertical; }
 .hint { color: var(--muted); font-size: 15px; margin-top: 6px; }
